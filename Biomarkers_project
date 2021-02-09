@@ -1,0 +1,121 @@
+# Proyecto BIOMARKERS
+
+setwd("D:/1. Academico/Cursos y pasantias/Grupo de estudio P53/Taller_R")
+getwd ()
+data1 <- read.csv("Biomarker_data.csv", header=T, sep=";", dec=",")
+
+# Exploracion de la data
+
+head(data1)
+summary(data1)
+names(data1)
+str(data1)
+
+# Instalacion 
+
+install.packages ("tableone") #Paquete para hacer tablas descriptivas con p-value
+install.packages ("MASS") #contiene los paquetes de glm regresiones
+install.packages("tidyverse") #Paquete para edicion de texto y creacion de variables
+install.packages("sjPlot") #Tablas de estimadores de fuerza de asociacion con IC95%
+
+# activacion de librerias
+
+library ("tableone") 
+library ("MASS") 
+library("tidyverse") 
+library("sjPlot") 
+
+# conversion y creacion de variables 
+
+##  IMC categorizacion 
+
+data1$imc_cat <- cut(data1$IMC,
+                     breaks = c(18.5, 25, 30, 100),
+                     labels = c("Normal", "Sobrepeso", "Obesidad"), 
+                     include.lowest = T,
+                     right = F) 
+
+summary(data1$imc_cat)
+
+# creacion de TG/HDL
+
+data1$tg_hdl <- data1$Trigliceridos/ data1$HDL
+
+# Creacion de TyG
+
+data1$TyG <- log(data1$Trigliceridos * data1$Glucosa/2)
+
+## Dicotomizacion de variables
+
+data1[data1$Ejercicio == 0,]$Ejercicio <- "No"
+data1[data1$Ejercicio == 1,]$Ejercicio <- "Si"
+
+data1[data1$Nutricion == 0,]$Nutricion <- "No"
+data1[data1$Nutricion == 1,]$Nutricion <- "Si"
+
+data1[data1$Alcohol == 0,]$Alcohol <- "No"
+data1[data1$Alcohol == 1,]$Alcohol <- "Si"
+
+data1[data1$Lifetime_Risk == 0,]$Lifetime_Risk <- "Bajo"
+data1[data1$Lifetime_Risk == 1,]$Lifetime_Risk <- "Alto"
+
+data1[data1$Diabetes == 0,]$Diabetes <- "No"
+data1[data1$Diabetes == 1,]$Diabetes <- "Si"
+
+data1[data1$Tabaco == 0,]$Tabaco <- "No"
+data1[data1$Tabaco == 1,]$Tabaco <- "Si"
+
+# Analisis descriptivos
+
+## General
+
+CreateTableOne(data = data1)
+tabla1 <- CreateTableOne(data = data1)
+tabla2 <- print(tabla1, showAllLevels = T)
+
+write.table(tabla2, file = 'tabla.csv', row.names=TRUE,col.names=TRUE, sep=",")
+
+## Estratificado por Lifetime risk
+
+tabla3 <- CreateTableOne(data = data1, strata = "Lifetime_Risk")
+tabla4 <- print(tabla3, showAllLevels = T)
+tabla5 <- print(tabla3, showAllLevels = T, nonnormal =TRUE)
+
+write.table(tabla4, file = 'tabla2.csv', row.names=TRUE,col.names=TRUE, sep=",")
+write.table(tabla5, file = 'tabla3.csv', row.names=TRUE,col.names=TRUE, sep=",")
+
+
+# Analisis inferencial 
+
+## Analisis de regresion de poisson con varianza robuzta 
+
+## analisis crudo TG/HDL
+
+model_1 <- glm(data = data1 , formula = Lifetime_Risk ~ tg_hdl , family = poisson (link = "log"))
+
+tab_model(model_1)
+
+## analisis crudo TG/Glu
+
+model_2 <- glm(data = data1 , formula = Lifetime_Risk ~ TyG , family = poisson (link = "log"))
+
+tab_model(model_2)
+
+
+## Analisis ajustado 
+
+head(data1)
+
+## modelo Life_RCV ~ TG/hdl +  HbA1c + LDL + IMC  + Nutricion + Ejercicio + Alcohol 
+
+
+model_multi_1 <- glm(data = data1 , formula = Lifetime_Risk ~ tg_hdl + HbA1c + LDL + Ac.Uric + Alcohol + SEXO, family = poisson (link = "log"))
+
+tab_model(model_multi_1)
+
+## modelo Life_RCV ~ TG/hdl +  HbA1c + LDL + IMC + Grasa + Nutricion + Ejercicio + Alcohol 
+
+
+model_multi_2 <- glm(data = data1 , formula = Lifetime_Risk ~ TyG + LDL + Ac.Uric + Alcohol + SEXO, family = poisson (link = "log"))
+
+tab_model(model_multi_2)
